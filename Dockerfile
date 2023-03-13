@@ -6,4 +6,4 @@ ADD . .
 
 RUN python setup.py develop
 
-CMD dyn_gandi
+CMD dyn_gandi --conf /etc/dyn-gandi/config.ini
