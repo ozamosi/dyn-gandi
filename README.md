@@ -86,9 +86,23 @@ $ crontab -e
 
 NB: If you used a Python virtual environment, replace the script by `<dyn-gandi-path>/.env/bin/dyn_gandi` .
 
+#### Using Docker :
+To use the docker image, create a new directory for the configuration, and put the config file in it:
+```shell
+$ mkdir config
+$ cp config.ini-dist config/config.ini
+```
+Update `config/config.ini` to contain the appropriate settings (see previous sections).
+
+Finally, run the image, with the config image:
+```shell
+docker run -it --rm -v ./config:/etc/dyn-gandi:ro ghcr.io/ozamosi/dyn-gandi:master
+```
+
+
 ###### Notes
   - [Gandi LiveDNS documentation](https://api.gandi.net/docs/livedns/)
   - Thanks [Gandyn](https://github.com/Chralu/gandyn) for the inspiration (and many years of use)
 
 ###### Common errors
-  - Ensure that your domain is correctly handled by Gandi LiveDNS API by following [this guide](https://docs.gandi.net/en/domain_names/common_operations/changing_nameservers.html#switching-to-livedns). 
+  - Ensure that your domain is correctly handled by Gandi LiveDNS API by following [this guide](https://docs.gandi.net/en/domain_names/common_operations/changing_nameservers.html#switching-to-livedns).
