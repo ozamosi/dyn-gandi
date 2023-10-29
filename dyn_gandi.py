@@ -16,6 +16,7 @@ Options:
 import configparser
 import json
 import os
+import socket
 import sys
 from configparser import ConfigParser
 from datetime import datetime
@@ -200,9 +201,18 @@ def main():
     today = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
 
     # Parse IP
+    if config['dns'].get('address_family', 'ipv4') == 'ipv4':
+        af = socket.AddressFamily.AF_INET
+        record = 'A'
+    elif config['dns']['address_family'] == 'ipv6':
+        af = socket.AddressFamily.AF_INET6
+        record = 'AAAA'
+    else:
+        raise RuntimeWarning("Invalid address family specified - has to be ipv4, ipv6, or unspecified") 
+
     try:
         ip_resolver = IpResolver(url=config['ip']['resolver_url'], alt_url=config['ip'].get('resolver_url_alt', None))
-        ip = ip_resolver.resolve_ip()
+        ip = ip_resolver.resolve_ip(af)
     except IpResolverError as e:
         print("%s - %s [ERROR]" % (today, str(e)), file=sys.stderr)
         raise RuntimeWarning("IP resolver returned an error: %s" % str(e))
@@ -241,7 +251,7 @@ def main():
 
     records = []
     for rec in config['dns']['records'].split(","):
-        records.append({"type": "A", "name": rec})
+        records.append({"type": record, "name": rec})
 
     if not records:
         raise RuntimeWarning("No records to update, check configuration.")

@@ -1,7 +1,9 @@
 import re
+import socket
 
 import requests
 from requests import Timeout
+import requests.packages.urllib3.util.connection as urllib3_cn
 
 
 class IpResolverError(Exception):
@@ -28,12 +30,19 @@ class IpResolver:
         self.url = url
         self.alt_url = alt_url
 
-    def resolve_ip(self):
+    def resolve_ip(self, expected_af):
         """Resolve the IP by parsing the content of the resolver URL.
 
         :return: The resolved IP.
         :rtype: str
         """
+
+        def allowed_gai_family():
+            family = expected_af
+            return family
+
+        original_gai_family = urllib3_cn.allowed_gai_family
+        urllib3_cn.allowed_gai_family = allowed_gai_family
 
         r = None
         try:
@@ -51,9 +60,12 @@ class IpResolver:
                 print("Main resolver timeout, trying alternate resolver.")
             else:
                 raise IpResolverError("IP resolver timeout.")
+        finally:
+            urllib3_cn.allowed_gai_family = original_gai_family
 
         if r is None and self.alt_url:
             try:
+                urllib3_cn.allowed_gai_family = allowed_gai_family
                 r = requests.get(self.alt_url, timeout=30.0)
 
                 if not r.ok:
@@ -61,15 +73,20 @@ class IpResolver:
 
             except Timeout:
                 raise IpResolverError("Alternate IP resolver timeout.")
+            finally:
+                urllib3_cn.allowed_gai_family = original_gai_family
 
         if not r.content:
             raise IpResolverError("Invalid content returned by IP resolver.")
 
-        match = re.search("(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", r.text)
+        if expected_af == socket.AddressFamily.AF_INET:
+            match = re.search("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", r.text)
+        elif expected_af == socket.AddressFamily.AF_INET6:
+            match = re.search("([a-fA-F0-9:]+:+)+[a-fA-F0-9]+", r.text)
 
         if not match:
             raise IpResolverError("IP not found in resolver content.")
 
-        ip = match.group(1)
+        ip = match.group(0)
 
         return ip
